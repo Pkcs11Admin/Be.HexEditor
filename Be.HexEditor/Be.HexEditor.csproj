@@ -360,9 +360,7 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="..\..\documentation\Changes.rtf">
-      <Link>Resources\Changes.rtf</Link>
-    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\Changes.rtf" />
     <EmbeddedResource Include="FormAbout.ja.resx">
       <DependentUpon>FormAbout.cs</DependentUpon>
     </EmbeddedResource>
@@ -436,9 +434,7 @@
     <None Include="Images\saveHS.png" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="..\..\license.txt">
-      <Link>Resources\license.txt</Link>
-    </EmbeddedResource>
+    <EmbeddedResource Include="Resources\license.txt" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Images\Logo.png" />
