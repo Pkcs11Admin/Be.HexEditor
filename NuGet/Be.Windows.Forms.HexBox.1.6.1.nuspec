@@ -2,14 +2,14 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
     <id>Be.Windows.Forms.HexBox</id>
-    <version>1.6.0</version>
+    <version>1.6.1</version>
     <title>Be.Windows.Forms.HexBox</title>
     <authors>Bernhard Elbl</authors>
     <owners>Jaroslav Imrich</owners>
     <licenseUrl>https://github.com/jariq/Be.HexEditor/raw/master/LICENSE.txt</licenseUrl>
     <projectUrl>http://sourceforge.net/projects/hexbox/</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>Windows Forms HEX editor control</description>
+    <description>HEX editor control for Windows Forms</description>
     <releaseNotes />
     <copyright>Copyright (c) 2011 Bernhard Elbl</copyright>
     <language />
