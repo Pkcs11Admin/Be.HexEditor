@@ -12,12 +12,12 @@ using System.Resources;
 [assembly: AssemblyDescription("View and edit files in hex format")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Be")]
-[assembly: AssemblyProduct("Be.HexEditor")]
-[assembly: AssemblyCopyright("")]
+[assembly: AssemblyProduct("Be.HexEditor (MIT)")]
+[assembly: AssemblyCopyright("Copyright (c) 2011 Bernhard Elbl")]
 [assembly: AssemblyTrademark("")]
-[assembly: AssemblyCulture("")]		
+[assembly: AssemblyCulture("")]
 
-[assembly: AssemblyVersion("1.5.0.*")]
+[assembly: AssemblyVersion("1.6.1")]
 
 [assembly: ComVisible(false)]
 [assembly: NeutralResourcesLanguage("en-US")]

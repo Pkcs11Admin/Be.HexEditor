@@ -1,5 +1,8 @@
 Version history
 
+1.6.1
+- Pretend that native methods for caret manipulation are available on Linux
+
 1.6.0
 - New feature: High DPI (DPI Aware) As-Per-Monitor Windows 8.1 support
 - Improvment: InfoForeColor default value changed to Gray

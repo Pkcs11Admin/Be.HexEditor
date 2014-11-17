@@ -10,13 +10,13 @@ using System.Runtime.InteropServices;
 // associated with an assembly.
 //
 [assembly: AssemblyTitle("Be.Windows.Forms.HexBox")]
-[assembly: AssemblyDescription("hex edit control (C# DOTNET)")]
+[assembly: AssemblyDescription("HEX editor control for Windows Forms")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Be")]
-[assembly: AssemblyProduct("Be.Windows.Forms.HexBox")]
-[assembly: AssemblyCopyright("")]
+[assembly: AssemblyProduct("Be.Windows.Forms.HexBox (MIT)")]
+[assembly: AssemblyCopyright("Copyright (c) 2011 Bernhard Elbl")]
 [assembly: AssemblyTrademark("")]
-[assembly: AssemblyCulture("")]		
+[assembly: AssemblyCulture("")]
 
 //
 // Version information for an assembly consists of the following four values:
@@ -29,7 +29,7 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Revision and Build Numbers 
 // by using the '*' as shown below:
 
-[assembly: AssemblyVersion("1.6.0.*")]
+[assembly: AssemblyVersion("1.6.1")]
 
 //
 // In order to sign your assembly you must specify a key to use. Refer to the 
