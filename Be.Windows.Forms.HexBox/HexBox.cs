@@ -1792,11 +1792,11 @@ namespace Be.Windows.Forms
 			// define the caret width depending on InsertActive mode
 			int caretWidth = (this.InsertActive) ? 1 : (int)_charSize.Width;
 			int caretHeight = (int)_charSize.Height;
-			NativeMethods.CreateCaret(Handle, IntPtr.Zero, caretWidth, caretHeight);
+            Caret.Create(Handle, IntPtr.Zero, caretWidth, caretHeight);
 
 			UpdateCaret();
 
-			NativeMethods.ShowCaret(Handle);
+			Caret.Show(Handle);
 
 			_caretVisible = true;
 		}
@@ -1811,7 +1811,7 @@ namespace Be.Windows.Forms
 			long byteIndex = _bytePos - _startByte;
 			PointF p = _keyInterpreter.GetCaretPointF(byteIndex);
 			p.X += _byteCharacterPos * _charSize.Width;
-			NativeMethods.SetCaretPos((int)p.X, (int)p.Y);
+			Caret.SetPos((int)p.X, (int)p.Y);
 		}
 
 		void DestroyCaret()
@@ -1821,7 +1821,7 @@ namespace Be.Windows.Forms
 
 			System.Diagnostics.Debug.WriteLine("DestroyCaret()", "HexBox");
 
-			NativeMethods.DestroyCaret();
+			Caret.Destroy();
 			_caretVisible = false;
 		}
 

@@ -123,6 +123,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="BytePositionInfo.cs" />
+    <Compile Include="Caret.cs" />
     <Compile Include="DataBlock.cs">
       <SubType>Code</SubType>
     </Compile>
