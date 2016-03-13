@@ -88,7 +88,10 @@ namespace Be.HexEditor
             // remove the last one, if max size is reached
             if (Settings.Default.RecentFiles.Count > MaxRecentFiles)
                 Settings.Default.RecentFiles.RemoveAt(MaxRecentFiles);
-            if (Settings.Default.RecentFiles.Count > Settings.Default.RecentFilesMax)
+// throws exception! (Scott Swift 3/13/16)
+//            if (Settings.Default.RecentFiles.Count > Settings.Default.RecentFilesMax)
+//                this.recentFileToolStripItem.DropDownItems.RemoveAt(Settings.Default.RecentFilesMax);
+            if (this.recentFileToolStripItem.DropDownItems.Count > Settings.Default.RecentFilesMax)
                 this.recentFileToolStripItem.DropDownItems.RemoveAt(Settings.Default.RecentFilesMax);
 
             // enable the menu item if it´s disabled
