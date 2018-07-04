@@ -7,6 +7,7 @@ using System.Security.Permissions;
 using System.Windows.Forms.VisualStyles;
 using System.Text;
 using System.Collections.Generic;
+using System.Collections;
 
 namespace Be.Windows.Forms
 {
@@ -1263,6 +1264,30 @@ namespace Be.Windows.Forms
 		/// Contains a state value about Insert or Write mode. When this value is true and the ByteProvider SupportsInsert is true bytes are inserted instead of overridden.
 		/// </summary>
 		bool _insertActive;
+
+		/// <summary>
+		/// Hightlight region entry
+		/// </summary>
+		internal class HighlightEntry
+		{
+			public long Start { get; set; }
+
+			public long End { get; set; }
+
+			public Color ForeColor { get; set; }
+
+			public Color BackColor { get; set; }
+
+			public Boolean IsWithin(long t)
+			{
+				return t >= Start && t <= End;
+			}
+		}
+
+		/// <summary>
+		/// Hightlighted regions
+		/// </summary>
+		List<HighlightEntry> _highlightEntries = new List<HighlightEntry>();
 		#endregion
 
 		#region Events
@@ -2287,6 +2312,72 @@ namespace Be.Windows.Forms
 
 		#endregion
 
+		#region Highlight methods
+		/// <summary>
+		/// Highlights bytes
+		/// </summary>
+		/// <param name="start">the start index of the selection</param>
+		/// <param name="size">the length of the selection</param>
+		/// <param name="fColor">Fore color</param>
+		/// <param name="bColor">Back color</param>
+		public void Highlight(long start, long size, Color fColor, Color bColor)
+		{
+
+			_highlightEntries.Add(new HighlightEntry()
+			{
+				Start = start,
+				End = start + size - 1,
+				ForeColor = fColor,
+				BackColor = bColor
+			});
+
+			Invalidate();
+		}
+
+		/// <summary>
+		/// Highlights bytes
+		/// </summary>
+		/// <param name="start">the start index of the selection</param>
+		/// <param name="size">the length of the selection</param>
+		public void Highlight(long start, long size)
+		{
+			Highlight(start, size, HighlightForeColor, HighlightBackColor);
+		}
+
+		/// <summary>
+		/// Remove highlighted region by position
+		/// </summary>
+		/// /// <param name="pos">highlight position</param>
+		public void Unhighlight(long pos)
+		{
+			var found = _highlightEntries.Find(item => item.IsWithin(pos));
+			if (found != null)
+			{
+				_highlightEntries.Remove(found);
+				Invalidate();
+			}
+		}
+
+		/// <summary>
+		/// Remove highlighted region by the caret position
+		/// </summary>
+		public void Unhighlight()
+		{
+			Unhighlight(_bytePos);
+		}
+
+		/// <summary>
+		/// Highlights selected bytes
+		/// </summary>
+		public void HighlightSelected()
+		{
+			if (SelectionLength > 0)
+			{
+				Highlight(SelectionStart, SelectionLength);
+			}
+		}
+		#endregion
+
 		#region Paint methods
 		/// <summary>
 		/// Paints the background.
@@ -2540,9 +2631,15 @@ namespace Be.Windows.Forms
 
 				bool isSelectedByte = i >= _bytePos && i <= (_bytePos + _selectionLength - 1) && _selectionLength != 0;
 
+				HighlightEntry hl = _highlightEntries.Find(item => item.IsWithin(i));
+
 				if (isSelectedByte && isKeyInterpreterActive)
 				{
 					PaintHexStringSelected(g, b, selBrush, selBrushBack, gridPoint);
+				}
+				else if (null != hl)
+				{
+					PaintHexStringSelected(g, b, new SolidBrush(hl.ForeColor), new SolidBrush(hl.BackColor), gridPoint);
 				}
 				else
 				{
@@ -2555,6 +2652,11 @@ namespace Be.Windows.Forms
 				{
 					g.FillRectangle(selBrushBack, byteStringPointF.X, byteStringPointF.Y, _charSize.Width, _charSize.Height);
 					g.DrawString(s, Font, selBrush, byteStringPointF, _stringFormat);
+				}
+				else if (null != hl)
+				{
+					g.FillRectangle(new SolidBrush(hl.BackColor), byteStringPointF.X, byteStringPointF.Y, _charSize.Width, _charSize.Height);
+					g.DrawString(s, Font, new SolidBrush(hl.ForeColor), byteStringPointF, _stringFormat);
 				}
 				else
 				{
@@ -3165,6 +3267,8 @@ namespace Be.Windows.Forms
 						CreateCaret();
 				}
 
+				_highlightEntries.Clear();
+
 				CheckCurrentLineChanged();
 				CheckCurrentPositionInLineChanged();
 
@@ -3401,6 +3505,28 @@ namespace Be.Windows.Forms
 			get { return _selectionForeColor; }
 			set { _selectionForeColor = value; Invalidate(); }
 		} Color _selectionForeColor = Color.White;
+
+		/// <summary>
+		/// Gets or sets the foreground color for the highlighted bytes.
+		/// </summary>
+		[DefaultValue(typeof(Color), "Black"), Category("Hex"), Description("Highlight foreground color.")]
+		public Color HighlightForeColor
+		{
+			get { return _hlForeColor; }
+			set { _hlForeColor = value; Invalidate(); }
+		}
+		Color _hlForeColor = Color.Black;
+
+		/// <summary>
+		/// Gets or sets the background color for the highlighted bytes.
+		/// </summary>
+		[DefaultValue(typeof(Color), "Yellow"), Category("Hex"), Description("Highlight background color.")]
+		public Color HighlightBackColor
+		{
+			get { return _hlBackColor; }
+			set { _hlBackColor = value; Invalidate(); }
+		}
+		Color _hlBackColor = Color.Yellow;
 
 		/// <summary>
 		/// Gets or sets the visibility of a shadow selection.
