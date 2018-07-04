@@ -653,6 +653,18 @@ namespace Be.Windows.Forms
 				return true;
 			}
 
+			protected virtual bool PreProcessWmKeyDown_ControlShiftC(ref Message m)
+			{
+				_hexBox.CopyHex();
+				return true;
+			}
+
+			protected virtual bool PreProcessWmKeyDown_ControlShiftV(ref Message m)
+			{
+				_hexBox.PasteHex();
+				return true;
+			}
+
 			#endregion
 
 			#region PreProcessWmChar methods
@@ -816,6 +828,8 @@ namespace Be.Windows.Forms
 						_messageHandlers.Add(Keys.C | Keys.Control, new MessageDelegate(PreProcessWmKeyDown_ControlC)); // copy 
 						_messageHandlers.Add(Keys.X | Keys.Control, new MessageDelegate(PreProcessWmKeyDown_ControlX)); // cut
 						_messageHandlers.Add(Keys.V | Keys.Control, new MessageDelegate(PreProcessWmKeyDown_ControlV)); // paste
+						_messageHandlers.Add(Keys.C | Keys.Control | Keys.Shift, new MessageDelegate(PreProcessWmKeyDown_ControlShiftC)); // copy hex
+						_messageHandlers.Add(Keys.V | Keys.Control | Keys.Shift, new MessageDelegate(PreProcessWmKeyDown_ControlShiftV)); // paste hex
 					}
 					return _messageHandlers;
 				}
