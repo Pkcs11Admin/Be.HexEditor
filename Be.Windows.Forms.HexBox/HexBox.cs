@@ -1357,16 +1357,16 @@ namespace Be.Windows.Forms
 		/// </summary>
 		[Description("Occurs, when CopyHex method was invoked and ClipBoardData changed.")]
 		public event EventHandler CopiedHex;
-        /// <summary>
-        /// Occurs, when the CharSize property has changed
-        /// </summary>
-        [Description("Occurs, when the CharSize property has changed")]
-        public event EventHandler CharSizeChanged;
-        /// <summary>
-        /// Occurs, when the RequiredWidth property changes
-        /// </summary>
-        [Description("Occurs, when the RequiredWidth property changes")]
-        public event EventHandler RequiredWidthChanged;
+		/// <summary>
+		/// Occurs, when the CharSize property has changed
+		/// </summary>
+		[Description("Occurs, when the CharSize property has changed")]
+		public event EventHandler CharSizeChanged;
+		/// <summary>
+		/// Occurs, when the RequiredWidth property changes
+		/// </summary>
+		[Description("Occurs, when the RequiredWidth property changes")]
+		public event EventHandler RequiredWidthChanged;
 		#endregion
 
 		#region Ctors
@@ -1382,7 +1382,7 @@ namespace Be.Windows.Forms
 			this._builtInContextMenu = new BuiltInContextMenu(this);
 
 			BackColor = Color.White;
-            Font = SystemFonts.MessageBoxFont;
+			Font = SystemFonts.MessageBoxFont;
 			_stringFormat = new StringFormat(StringFormat.GenericTypographic);
 			_stringFormat.FormatFlags = StringFormatFlags.MeasureTrailingSpaces;
 
@@ -1792,7 +1792,7 @@ namespace Be.Windows.Forms
 			// define the caret width depending on InsertActive mode
 			int caretWidth = (this.InsertActive) ? 1 : (int)_charSize.Width;
 			int caretHeight = (int)_charSize.Height;
-            Caret.Create(Handle, IntPtr.Zero, caretWidth, caretHeight);
+			Caret.Create(Handle, IntPtr.Zero, caretWidth, caretHeight);
 
 			UpdateCaret();
 
@@ -2751,14 +2751,14 @@ namespace Be.Windows.Forms
 		void UpdateRectanglePositioning()
 		{
 			// calc char size
-            SizeF charSize;
-            using (var graphics = this.CreateGraphics())
-            {
-                charSize = this.CreateGraphics().MeasureString("A", Font, 100, _stringFormat);
-            }
+			SizeF charSize;
+			using (var graphics = this.CreateGraphics())
+			{
+				charSize = this.CreateGraphics().MeasureString("A", Font, 100, _stringFormat);
+			}
 			CharSize = new SizeF((float)Math.Ceiling(charSize.Width), (float)Math.Ceiling(charSize.Height));
 
-            int requiredWidth = 0;
+			int requiredWidth = 0;
 
 			// calc content bounds
 			_recContent = ClientRectangle;
@@ -2773,7 +2773,7 @@ namespace Be.Windows.Forms
 				_vScrollBar.Left = _recContent.X + _recContent.Width;
 				_vScrollBar.Top = _recContent.Y;
 				_vScrollBar.Height = _recContent.Height;
-                requiredWidth += _vScrollBar.Width;
+				requiredWidth += _vScrollBar.Width;
 			}
 
 			int marginLeft = 4;
@@ -2785,13 +2785,13 @@ namespace Be.Windows.Forms
 					_recContent.Y,
 					(int)(_charSize.Width * 10),
 					_recContent.Height);
-                requiredWidth += _recLineInfo.Width;
+				requiredWidth += _recLineInfo.Width;
 			}
 			else
 			{
 				_recLineInfo = Rectangle.Empty;
 				_recLineInfo.X = marginLeft;
-                requiredWidth += marginLeft;
+				requiredWidth += marginLeft;
 			}
 
 			// calc line info bounds
@@ -2816,7 +2816,7 @@ namespace Be.Windows.Forms
 			{
 				SetHorizontalByteCount(_bytesPerLine);
 				_recHex.Width = (int)Math.Floor(((double)_iHexMaxHBytes) * _charSize.Width * 3 + (2 * _charSize.Width));
-                requiredWidth += _recHex.Width;
+				requiredWidth += _recHex.Width;
 			}
 			else
 			{
@@ -2837,7 +2837,7 @@ namespace Be.Windows.Forms
 						SetHorizontalByteCount(1);
 				}
 				_recHex.Width = (int)Math.Floor(((double)_iHexMaxHBytes) * _charSize.Width * 3 + (2 * _charSize.Width));
-                requiredWidth += _recHex.Width;
+				requiredWidth += _recHex.Width;
 			}
 
 			if (_stringViewVisible)
@@ -2846,14 +2846,14 @@ namespace Be.Windows.Forms
 					_recHex.Y,
 					(int)(_charSize.Width * _iHexMaxHBytes),
 					_recHex.Height);
-                requiredWidth += _recStringView.Width;
+				requiredWidth += _recStringView.Width;
 			}
 			else
 			{
 				_recStringView = Rectangle.Empty;
 			}
 
-            RequiredWidth = requiredWidth;
+			RequiredWidth = requiredWidth;
 
 			int vmax = (int)Math.Floor((double)_recHex.Height / (double)_charSize.Height);
 			SetVerticalByteCount(vmax);
@@ -2932,12 +2932,12 @@ namespace Be.Windows.Forms
 			}
 			set
 			{
-                if (value == null)
-                    return;
-                
+				if (value == null)
+					return;
+				
 				base.Font = value;
-                this.UpdateRectanglePositioning();
-                this.Invalidate();
+				this.UpdateRectanglePositioning();
+				this.Invalidate();
 			}
 		}
 
@@ -3418,39 +3418,39 @@ namespace Be.Windows.Forms
 			set { _shadowSelectionColor = value; Invalidate(); }
 		} Color _shadowSelectionColor = Color.FromArgb(100, 60, 188, 255);
 
-        /// <summary>
-        /// Contains the size of a single character in pixel
-        /// </summary>
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public SizeF CharSize
-        {
-            get { return _charSize; }
-            private set
-            {
-                if (_charSize == value)
-                    return;
-                _charSize = value;
-                if (CharSizeChanged != null)
-                    CharSizeChanged(this, EventArgs.Empty);
-            }
-        } SizeF _charSize;
+		/// <summary>
+		/// Contains the size of a single character in pixel
+		/// </summary>
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+		public SizeF CharSize
+		{
+			get { return _charSize; }
+			private set
+			{
+				if (_charSize == value)
+					return;
+				_charSize = value;
+				if (CharSizeChanged != null)
+					CharSizeChanged(this, EventArgs.Empty);
+			}
+		} SizeF _charSize;
 
-        /// <summary>
-        /// Gets the width required for the content
-        /// </summary>
-        [DefaultValue(0), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public int RequiredWidth
-        {
-            get { return _requiredWidth; }
-            private set
-            {
-                if (_requiredWidth == value)
-                    return;
-                _requiredWidth = value;
-                if (RequiredWidthChanged != null)
-                    RequiredWidthChanged(this, EventArgs.Empty);
-            }
-        } int _requiredWidth;
+		/// <summary>
+		/// Gets the width required for the content
+		/// </summary>
+		[DefaultValue(0), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+		public int RequiredWidth
+		{
+			get { return _requiredWidth; }
+			private set
+			{
+				if (_requiredWidth == value)
+					return;
+				_requiredWidth = value;
+				if (RequiredWidthChanged != null)
+					RequiredWidthChanged(this, EventArgs.Empty);
+			}
+		} int _requiredWidth;
 
 		/// <summary>
 		/// Gets the number bytes drawn horizontally.
@@ -3975,27 +3975,27 @@ namespace Be.Windows.Forms
 		}
 		#endregion
 
-        #region Scaling Support for High DPI resolution screens
-        /// <summary>
-        /// For high resolution screen support
-        /// </summary>
-        /// <param name="factor">the factor</param>
-        /// <param name="specified">bounds</param>
-        protected override void ScaleControl(SizeF factor, BoundsSpecified specified)
-        {
-            base.ScaleControl(factor, specified);
+		#region Scaling Support for High DPI resolution screens
+		/// <summary>
+		/// For high resolution screen support
+		/// </summary>
+		/// <param name="factor">the factor</param>
+		/// <param name="specified">bounds</param>
+		protected override void ScaleControl(SizeF factor, BoundsSpecified specified)
+		{
+			base.ScaleControl(factor, specified);
 
-            this.BeginInvoke(new MethodInvoker(() =>
-                {
-                    this.UpdateRectanglePositioning();
-                    if (_caretVisible)
-                    {
-                        DestroyCaret();
-                        CreateCaret();
-                    }
-                    this.Invalidate();
-                }));
-        }
-        #endregion
-    }
+			this.BeginInvoke(new MethodInvoker(() =>
+				{
+					this.UpdateRectanglePositioning();
+					if (_caretVisible)
+					{
+						DestroyCaret();
+						CreateCaret();
+					}
+					this.Invalidate();
+				}));
+		}
+		#endregion
+	}
 }
