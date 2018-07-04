@@ -1268,8 +1268,8 @@ namespace Be.Windows.Forms
 		/// <summary>
 		/// Hightlight region entry
 		/// </summary>
-		internal class HighlightEntry
-		{
+		class HighlightRegion : IEquatable<HighlightRegion>
+        {
 			public long Start { get; set; }
 
 			public long End { get; set; }
@@ -1278,16 +1278,32 @@ namespace Be.Windows.Forms
 
 			public Color BackColor { get; set; }
 
-			public Boolean IsWithin(long t)
+			public bool IsWithin(long t)
 			{
 				return t >= Start && t <= End;
 			}
-		}
+
+            public void Merge(HighlightRegion other)
+            {
+                Start = Math.Min(Start, other.Start);
+                End = Math.Max(End, other.End);
+            }
+
+            public bool Overlaps(HighlightRegion other)
+            {
+                return IsWithin(other.Start) || IsWithin(other.End) || other.IsWithin(Start);
+            }
+
+            public bool Equals(HighlightRegion other)
+            {
+                return other.Start == Start && other.End == End;
+            }
+        }
 
 		/// <summary>
 		/// Hightlighted regions
 		/// </summary>
-		List<HighlightEntry> _highlightEntries = new List<HighlightEntry>();
+		List<HighlightRegion> _highlightRegions = new List<HighlightRegion>();
 		#endregion
 
 		#region Events
@@ -1406,14 +1422,19 @@ namespace Be.Windows.Forms
 		/// </summary>
 		[Description("Occurs, when the RequiredWidth property changes")]
 		public event EventHandler RequiredWidthChanged;
-		#endregion
+        /// <summary>
+        /// Occurs, when the highlight region is added
+        /// </summary>
+        [Description("Occurs, when the highlight region is added")]
+        public event EventHandler HighlightAdded;
+        #endregion
 
-		#region Ctors
+        #region Ctors
 
-		/// <summary>
-		/// Initializes a new instance of a HexBox class.
-		/// </summary>
-		public HexBox()
+        /// <summary>
+        /// Initializes a new instance of a HexBox class.
+        /// </summary>
+        public HexBox()
 		{
 			this._vScrollBar = new VScrollBar();
 			this._vScrollBar.Scroll += new ScrollEventHandler(_vScrollBar_Scroll);
@@ -2323,15 +2344,29 @@ namespace Be.Windows.Forms
 		public void Highlight(long start, long size, Color fColor, Color bColor)
 		{
 
-			_highlightEntries.Add(new HighlightEntry()
-			{
-				Start = start,
-				End = start + size - 1,
-				ForeColor = fColor,
-				BackColor = bColor
-			});
+            HighlightRegion region = new HighlightRegion()
+            {
+                Start = start,
+                End = start + size - 1,
+                ForeColor = fColor,
+                BackColor = bColor
+            };
 
-			Invalidate();
+            if (!_highlightRegions.Contains(region))
+            {
+                HighlightRegion found = null;
+                while ((found = _highlightRegions.Find(item => item.Overlaps(region))) != null)
+                {
+                    region.Merge(found);
+                    _highlightRegions.Remove(found);
+                }
+
+                _highlightRegions.Add(region);
+
+                OnHighlightAdded(EventArgs.Empty);
+
+                Invalidate();
+            }
 		}
 
 		/// <summary>
@@ -2350,10 +2385,10 @@ namespace Be.Windows.Forms
 		/// /// <param name="pos">highlight position</param>
 		public void Unhighlight(long pos)
 		{
-			var found = _highlightEntries.Find(item => item.IsWithin(pos));
+			var found = _highlightRegions.Find(item => item.IsWithin(pos));
 			if (found != null)
 			{
-				_highlightEntries.Remove(found);
+				_highlightRegions.Remove(found);
 				Invalidate();
 			}
 		}
@@ -2631,7 +2666,7 @@ namespace Be.Windows.Forms
 
 				bool isSelectedByte = i >= _bytePos && i <= (_bytePos + _selectionLength - 1) && _selectionLength != 0;
 
-				HighlightEntry hl = _highlightEntries.Find(item => item.IsWithin(i));
+				HighlightRegion hl = _highlightRegions.Find(item => item.IsWithin(i));
 
 				if (isSelectedByte && isKeyInterpreterActive)
 				{
@@ -3267,7 +3302,7 @@ namespace Be.Windows.Forms
 						CreateCaret();
 				}
 
-				_highlightEntries.Clear();
+				_highlightRegions.Clear();
 
 				CheckCurrentLineChanged();
 				CheckCurrentPositionInLineChanged();
@@ -4113,15 +4148,25 @@ namespace Be.Windows.Forms
 		{
 			UpdateScrollSize();
 		}
-		#endregion
 
-		#region Scaling Support for High DPI resolution screens
-		/// <summary>
-		/// For high resolution screen support
-		/// </summary>
-		/// <param name="factor">the factor</param>
-		/// <param name="specified">bounds</param>
-		protected override void ScaleControl(SizeF factor, BoundsSpecified specified)
+        /// <summary>
+        /// Raises the HighlightAdded event.
+        /// </summary>
+        /// <param name="e">An EventArgs that contains the event data.</param>
+        protected virtual void OnHighlightAdded(EventArgs e)
+        {
+            if (HighlightAdded != null)
+                HighlightAdded(this, e);
+        }
+        #endregion
+
+        #region Scaling Support for High DPI resolution screens
+        /// <summary>
+        /// For high resolution screen support
+        /// </summary>
+        /// <param name="factor">the factor</param>
+        /// <param name="specified">bounds</param>
+        protected override void ScaleControl(SizeF factor, BoundsSpecified specified)
 		{
 			base.ScaleControl(factor, specified);
 
