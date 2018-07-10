@@ -1268,42 +1268,76 @@ namespace Be.Windows.Forms
 		/// <summary>
 		/// Hightlight region entry
 		/// </summary>
-		class HighlightRegion : IEquatable<HighlightRegion>
-        {
+		public class HighlightRegion : IEquatable<HighlightRegion>
+		{
+			/// <summary>
+			/// Hightlight region start index
+			/// </summary>
 			public long Start { get; set; }
 
+			/// <summary>
+			/// Hightlight region end index
+			/// </summary>
 			public long End { get; set; }
 
+			/// <summary>
+			/// Hightlight region foreground color
+			/// </summary>
 			public Color ForeColor { get; set; }
 
+			/// <summary>
+			/// Hightlight region background color
+			/// </summary>
 			public Color BackColor { get; set; }
 
+			/// <summary>
+			/// Hightlight region label
+			/// </summary>
+			public String Label { get; set; }
+
+			/// <summary>
+			/// Checks hightlight region within position index
+			/// </summary>
 			public bool IsWithin(long t)
 			{
 				return t >= Start && t <= End;
 			}
 
-            public void Merge(HighlightRegion other)
-            {
-                Start = Math.Min(Start, other.Start);
-                End = Math.Max(End, other.End);
-            }
+			/// <summary>
+			/// Merge two hightlight regions
+			/// </summary>
+			public void Merge(HighlightRegion other)
+			{
+				Start = Math.Min(Start, other.Start);
+				End = Math.Max(End, other.End);
+			}
 
-            public bool Overlaps(HighlightRegion other)
-            {
-                return IsWithin(other.Start) || IsWithin(other.End) || other.IsWithin(Start);
-            }
+			/// <summary>
+			/// Checks if hightlight regions overlap
+			/// </summary>
+			public bool Overlaps(HighlightRegion other)
+			{
+				return IsWithin(other.Start) || IsWithin(other.End) || other.IsWithin(Start);
+			}
 
-            public bool Equals(HighlightRegion other)
-            {
-                return other.Start == Start && other.End == End;
-            }
-        }
+			/// <summary>
+			/// Checks two hightlight regions have same coordinates
+			/// </summary>
+			public bool Equals(HighlightRegion other)
+			{
+				return other.Start == Start && other.End == End;
+			}
+		}
 
 		/// <summary>
 		/// Hightlighted regions
 		/// </summary>
 		List<HighlightRegion> _highlightRegions = new List<HighlightRegion>();
+
+		/// <summary>
+		/// Seleced region
+		/// </summary>
+		HighlightRegion _selectedRegion;
 		#endregion
 
 		#region Events
@@ -1422,19 +1456,24 @@ namespace Be.Windows.Forms
 		/// </summary>
 		[Description("Occurs, when the RequiredWidth property changes")]
 		public event EventHandler RequiredWidthChanged;
-        /// <summary>
-        /// Occurs, when the highlight region is added
-        /// </summary>
-        [Description("Occurs, when the highlight region is added")]
-        public event EventHandler HighlightAdded;
-        #endregion
+		/// <summary>
+		/// Occurs, when the highlight region is added
+		/// </summary>
+		[Description("Occurs, when the highlight region is added")]
+		public event EventHandler HighlightRegionAdded;
+		/// <summary>
+		/// Occurs, when the highlight region is selected
+		/// </summary>
+		[Description("Occurs, when the highlight region is selected")]
+		public event EventHandler HighlightRegionSelected;
+		#endregion
 
-        #region Ctors
+		#region Ctors
 
-        /// <summary>
-        /// Initializes a new instance of a HexBox class.
-        /// </summary>
-        public HexBox()
+		/// <summary>
+		/// Initializes a new instance of a HexBox class.
+		/// </summary>
+		public HexBox()
 		{
 			this._vScrollBar = new VScrollBar();
 			this._vScrollBar.Scroll += new ScrollEventHandler(_vScrollBar_Scroll);
@@ -2018,25 +2057,25 @@ namespace Be.Windows.Forms
 			byte[] buffer2 = null;
 			if (options.Type == FindType.Text && options.MatchCase)
 			{
-				if(options.FindBuffer == null || options.FindBuffer.Length == 0)
+				if (options.FindBuffer == null || options.FindBuffer.Length == 0)
 					throw new ArgumentException("FindBuffer can not be null when Type: Text and MatchCase: false");
 				buffer1 = options.FindBuffer;
 			}
 			else if (options.Type == FindType.Text && !options.MatchCase)
 			{
-				if(options.FindBufferLowerCase == null || options.FindBufferLowerCase.Length == 0)
+				if (options.FindBufferLowerCase == null || options.FindBufferLowerCase.Length == 0)
 					throw new ArgumentException("FindBufferLowerCase can not be null when Type is Text and MatchCase is true");
-				if(options.FindBufferUpperCase == null || options.FindBufferUpperCase.Length == 0)
+				if (options.FindBufferUpperCase == null || options.FindBufferUpperCase.Length == 0)
 					throw new ArgumentException("FindBufferUpperCase can not be null when Type is Text and MatchCase is true");
-				if(options.FindBufferLowerCase.Length != options.FindBufferUpperCase.Length)
+				if (options.FindBufferLowerCase.Length != options.FindBufferUpperCase.Length)
 					throw new ArgumentException("FindBufferUpperCase and FindBufferUpperCase must have the same size when Type is Text and MatchCase is true");
 				buffer1 = options.FindBufferLowerCase;
 				buffer2 = options.FindBufferUpperCase;
-				
+
 			}
 			else if (options.Type == FindType.Hex)
 			{
-				if(options.Hex == null || options.Hex.Length == 0)
+				if (options.Hex == null || options.Hex.Length == 0)
 					throw new ArgumentException("Hex can not be null when Type is Hex");
 				buffer1 = options.Hex;
 			}
@@ -2341,33 +2380,36 @@ namespace Be.Windows.Forms
 		/// <param name="size">the length of the selection</param>
 		/// <param name="fColor">Fore color</param>
 		/// <param name="bColor">Back color</param>
-		public void Highlight(long start, long size, Color fColor, Color bColor)
+		/// <param name="label">Region label</param>
+		public void Highlight(long start, long size, Color fColor, Color bColor, String label = null)
 		{
 
-            HighlightRegion region = new HighlightRegion()
-            {
-                Start = start,
-                End = start + size - 1,
-                ForeColor = fColor,
-                BackColor = bColor
-            };
+			HighlightRegion region = new HighlightRegion()
+			{
+				Start = start,
+				End = start + size - 1,
+				ForeColor = fColor,
+				BackColor = bColor,
+				Label = label
+			};
 
-            if (!_highlightRegions.Contains(region))
-            {
-                HighlightRegion found = null;
-                while ((found = _highlightRegions.Find(item => item.Overlaps(region))) != null)
-                {
-                    region.Merge(found);
-                    _highlightRegions.Remove(found);
-                }
+			if (!_highlightRegions.Contains(region))
+			{
+				HighlightRegion found = null;
+				while ((found = _highlightRegions.Find(item => item.Overlaps(region))) != null)
+				{
+					region.Merge(found);
+					_highlightRegions.Remove(found);
+				}
 
-                _highlightRegions.Add(region);
+				_highlightRegions.Add(region);
 
-                OnHighlightAdded(EventArgs.Empty);
+				OnHighlightRegionAdded(EventArgs.Empty);
 
-                Invalidate();
-            }
+				Invalidate();
+			}
 		}
+
 
 		/// <summary>
 		/// Highlights bytes
@@ -2731,7 +2773,7 @@ namespace Be.Windows.Forms
 						int multiLine = endSelGridPoint.Y - startSelGridPoint.Y;
 						if (multiLine == 0)
 						{
-							
+
 							Rectangle singleLine = new Rectangle(
 								(int)startSelPointF.X,
 								(int)startSelPointF.Y,
@@ -3085,7 +3127,7 @@ namespace Be.Windows.Forms
 			{
 				if (value == null)
 					return;
-				
+
 				base.Font = value;
 				this.UpdateRectanglePositioning();
 				this.Invalidate();
@@ -3718,6 +3760,17 @@ namespace Be.Windows.Forms
 			}
 		} IByteCharConverter _byteCharConverter;
 
+		/// <summary>
+		/// Gets currently selected region
+		/// </summary>
+		[Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+		public HighlightRegion SelectedRegion
+		{
+			get
+			{
+				return _selectedRegion;
+			}
+		}
 		#endregion
 
 		#region Misc
@@ -3804,6 +3857,12 @@ namespace Be.Windows.Forms
 				CheckCurrentPositionInLineChanged();
 
 				OnSelectionStartChanged(EventArgs.Empty);
+
+				_selectedRegion = _highlightRegions.Find(item => item.IsWithin(_bytePos));
+				if (null != _selectedRegion)
+				{
+					OnHighlightRegionSelected(EventArgs.Empty);
+				}
 			}
 		}
 
@@ -4149,24 +4208,34 @@ namespace Be.Windows.Forms
 			UpdateScrollSize();
 		}
 
-        /// <summary>
-        /// Raises the HighlightAdded event.
-        /// </summary>
-        /// <param name="e">An EventArgs that contains the event data.</param>
-        protected virtual void OnHighlightAdded(EventArgs e)
-        {
-            if (HighlightAdded != null)
-                HighlightAdded(this, e);
-        }
-        #endregion
+		/// <summary>
+		/// Raises the HighlightRegionAdded event.
+		/// </summary>
+		/// <param name="e">An EventArgs that contains the event data.</param>
+		protected virtual void OnHighlightRegionAdded(EventArgs e)
+		{
+			if (HighlightRegionAdded != null)
+				HighlightRegionAdded(this, e);
+		}
 
-        #region Scaling Support for High DPI resolution screens
-        /// <summary>
-        /// For high resolution screen support
-        /// </summary>
-        /// <param name="factor">the factor</param>
-        /// <param name="specified">bounds</param>
-        protected override void ScaleControl(SizeF factor, BoundsSpecified specified)
+		/// <summary>
+		/// Raises the HighlightRegionSelected event.
+		/// </summary>
+		/// <param name="e">An EventArgs that contains the event data.</param>
+		protected virtual void OnHighlightRegionSelected(EventArgs e)
+		{
+			if (HighlightRegionSelected != null)
+				HighlightRegionSelected(this, e);
+		}
+		#endregion
+
+		#region Scaling Support for High DPI resolution screens
+		/// <summary>
+		/// For high resolution screen support
+		/// </summary>
+		/// <param name="factor">the factor</param>
+		/// <param name="specified">bounds</param>
+		protected override void ScaleControl(SizeF factor, BoundsSpecified specified)
 		{
 			base.ScaleControl(factor, specified);
 
