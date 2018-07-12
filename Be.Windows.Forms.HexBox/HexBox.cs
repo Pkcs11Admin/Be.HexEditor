@@ -7,6 +7,7 @@ using System.Security.Permissions;
 using System.Windows.Forms.VisualStyles;
 using System.Text;
 using System.Collections.Generic;
+using System.Collections;
 
 namespace Be.Windows.Forms
 {
@@ -653,6 +654,18 @@ namespace Be.Windows.Forms
 				return true;
 			}
 
+			protected virtual bool PreProcessWmKeyDown_ControlShiftC(ref Message m)
+			{
+				_hexBox.CopyHex();
+				return true;
+			}
+
+			protected virtual bool PreProcessWmKeyDown_ControlShiftV(ref Message m)
+			{
+				_hexBox.PasteHex();
+				return true;
+			}
+
 			#endregion
 
 			#region PreProcessWmChar methods
@@ -816,6 +829,8 @@ namespace Be.Windows.Forms
 						_messageHandlers.Add(Keys.C | Keys.Control, new MessageDelegate(PreProcessWmKeyDown_ControlC)); // copy 
 						_messageHandlers.Add(Keys.X | Keys.Control, new MessageDelegate(PreProcessWmKeyDown_ControlX)); // cut
 						_messageHandlers.Add(Keys.V | Keys.Control, new MessageDelegate(PreProcessWmKeyDown_ControlV)); // paste
+						_messageHandlers.Add(Keys.C | Keys.Control | Keys.Shift, new MessageDelegate(PreProcessWmKeyDown_ControlShiftC)); // copy hex
+						_messageHandlers.Add(Keys.V | Keys.Control | Keys.Shift, new MessageDelegate(PreProcessWmKeyDown_ControlShiftV)); // paste hex
 					}
 					return _messageHandlers;
 				}
@@ -1249,6 +1264,80 @@ namespace Be.Windows.Forms
 		/// Contains a state value about Insert or Write mode. When this value is true and the ByteProvider SupportsInsert is true bytes are inserted instead of overridden.
 		/// </summary>
 		bool _insertActive;
+
+		/// <summary>
+		/// Hightlight region entry
+		/// </summary>
+		public class HighlightRegion : IEquatable<HighlightRegion>
+		{
+			/// <summary>
+			/// Hightlight region start index
+			/// </summary>
+			public long Start { get; set; }
+
+			/// <summary>
+			/// Hightlight region end index
+			/// </summary>
+			public long End { get; set; }
+
+			/// <summary>
+			/// Hightlight region foreground color
+			/// </summary>
+			public Color ForeColor { get; set; }
+
+			/// <summary>
+			/// Hightlight region background color
+			/// </summary>
+			public Color BackColor { get; set; }
+
+			/// <summary>
+			/// Hightlight region label
+			/// </summary>
+			public String Label { get; set; }
+
+			/// <summary>
+			/// Checks hightlight region within position index
+			/// </summary>
+			public bool IsWithin(long t)
+			{
+				return t >= Start && t <= End;
+			}
+
+			/// <summary>
+			/// Merge two hightlight regions
+			/// </summary>
+			public void Merge(HighlightRegion other)
+			{
+				Start = Math.Min(Start, other.Start);
+				End = Math.Max(End, other.End);
+			}
+
+			/// <summary>
+			/// Checks if hightlight regions overlap
+			/// </summary>
+			public bool Overlaps(HighlightRegion other)
+			{
+				return IsWithin(other.Start) || IsWithin(other.End) || other.IsWithin(Start);
+			}
+
+			/// <summary>
+			/// Checks two hightlight regions have same coordinates
+			/// </summary>
+			public bool Equals(HighlightRegion other)
+			{
+				return other.Start == Start && other.End == End;
+			}
+		}
+
+		/// <summary>
+		/// Hightlighted regions
+		/// </summary>
+		List<HighlightRegion> _highlightRegions = new List<HighlightRegion>();
+
+		/// <summary>
+		/// Seleced region
+		/// </summary>
+		HighlightRegion _selectedRegion;
 		#endregion
 
 		#region Events
@@ -1357,16 +1446,26 @@ namespace Be.Windows.Forms
 		/// </summary>
 		[Description("Occurs, when CopyHex method was invoked and ClipBoardData changed.")]
 		public event EventHandler CopiedHex;
-        /// <summary>
-        /// Occurs, when the CharSize property has changed
-        /// </summary>
-        [Description("Occurs, when the CharSize property has changed")]
-        public event EventHandler CharSizeChanged;
-        /// <summary>
-        /// Occurs, when the RequiredWidth property changes
-        /// </summary>
-        [Description("Occurs, when the RequiredWidth property changes")]
-        public event EventHandler RequiredWidthChanged;
+		/// <summary>
+		/// Occurs, when the CharSize property has changed
+		/// </summary>
+		[Description("Occurs, when the CharSize property has changed")]
+		public event EventHandler CharSizeChanged;
+		/// <summary>
+		/// Occurs, when the RequiredWidth property changes
+		/// </summary>
+		[Description("Occurs, when the RequiredWidth property changes")]
+		public event EventHandler RequiredWidthChanged;
+		/// <summary>
+		/// Occurs, when the highlight region is added
+		/// </summary>
+		[Description("Occurs, when the highlight region is added")]
+		public event EventHandler HighlightRegionAdded;
+		/// <summary>
+		/// Occurs, when the highlight region is selected
+		/// </summary>
+		[Description("Occurs, when the highlight region is selected")]
+		public event EventHandler HighlightRegionSelected;
 		#endregion
 
 		#region Ctors
@@ -1382,7 +1481,7 @@ namespace Be.Windows.Forms
 			this._builtInContextMenu = new BuiltInContextMenu(this);
 
 			BackColor = Color.White;
-            Font = SystemFonts.MessageBoxFont;
+			Font = SystemFonts.MessageBoxFont;
 			_stringFormat = new StringFormat(StringFormat.GenericTypographic);
 			_stringFormat.FormatFlags = StringFormatFlags.MeasureTrailingSpaces;
 
@@ -1792,7 +1891,7 @@ namespace Be.Windows.Forms
 			// define the caret width depending on InsertActive mode
 			int caretWidth = (this.InsertActive) ? 1 : (int)_charSize.Width;
 			int caretHeight = (int)_charSize.Height;
-            Caret.Create(Handle, IntPtr.Zero, caretWidth, caretHeight);
+			Caret.Create(Handle, IntPtr.Zero, caretWidth, caretHeight);
 
 			UpdateCaret();
 
@@ -1958,25 +2057,25 @@ namespace Be.Windows.Forms
 			byte[] buffer2 = null;
 			if (options.Type == FindType.Text && options.MatchCase)
 			{
-				if(options.FindBuffer == null || options.FindBuffer.Length == 0)
+				if (options.FindBuffer == null || options.FindBuffer.Length == 0)
 					throw new ArgumentException("FindBuffer can not be null when Type: Text and MatchCase: false");
 				buffer1 = options.FindBuffer;
 			}
 			else if (options.Type == FindType.Text && !options.MatchCase)
 			{
-				if(options.FindBufferLowerCase == null || options.FindBufferLowerCase.Length == 0)
+				if (options.FindBufferLowerCase == null || options.FindBufferLowerCase.Length == 0)
 					throw new ArgumentException("FindBufferLowerCase can not be null when Type is Text and MatchCase is true");
-				if(options.FindBufferUpperCase == null || options.FindBufferUpperCase.Length == 0)
+				if (options.FindBufferUpperCase == null || options.FindBufferUpperCase.Length == 0)
 					throw new ArgumentException("FindBufferUpperCase can not be null when Type is Text and MatchCase is true");
-				if(options.FindBufferLowerCase.Length != options.FindBufferUpperCase.Length)
+				if (options.FindBufferLowerCase.Length != options.FindBufferUpperCase.Length)
 					throw new ArgumentException("FindBufferUpperCase and FindBufferUpperCase must have the same size when Type is Text and MatchCase is true");
 				buffer1 = options.FindBufferLowerCase;
 				buffer2 = options.FindBufferUpperCase;
-				
+
 			}
 			else if (options.Type == FindType.Hex)
 			{
-				if(options.Hex == null || options.Hex.Length == 0)
+				if (options.Hex == null || options.Hex.Length == 0)
 					throw new ArgumentException("Hex can not be null when Type is Hex");
 				buffer1 = options.Hex;
 			}
@@ -2273,6 +2372,89 @@ namespace Be.Windows.Forms
 
 		#endregion
 
+		#region Highlight methods
+		/// <summary>
+		/// Highlights bytes
+		/// </summary>
+		/// <param name="start">the start index of the selection</param>
+		/// <param name="size">the length of the selection</param>
+		/// <param name="fColor">Fore color</param>
+		/// <param name="bColor">Back color</param>
+		/// <param name="label">Region label</param>
+		public void Highlight(long start, long size, Color fColor, Color bColor, String label = null)
+		{
+
+			HighlightRegion region = new HighlightRegion()
+			{
+				Start = start,
+				End = start + size - 1,
+				ForeColor = fColor,
+				BackColor = bColor,
+				Label = label
+			};
+
+			if (!_highlightRegions.Contains(region))
+			{
+				HighlightRegion found = null;
+				while ((found = _highlightRegions.Find(item => item.Overlaps(region))) != null)
+				{
+					region.Merge(found);
+					_highlightRegions.Remove(found);
+				}
+
+				_highlightRegions.Add(region);
+
+				OnHighlightRegionAdded(EventArgs.Empty);
+
+				Invalidate();
+			}
+		}
+
+
+		/// <summary>
+		/// Highlights bytes
+		/// </summary>
+		/// <param name="start">the start index of the selection</param>
+		/// <param name="size">the length of the selection</param>
+		public void Highlight(long start, long size)
+		{
+			Highlight(start, size, HighlightForeColor, HighlightBackColor);
+		}
+
+		/// <summary>
+		/// Remove highlighted region by position
+		/// </summary>
+		/// /// <param name="pos">highlight position</param>
+		public void Unhighlight(long pos)
+		{
+			var found = _highlightRegions.Find(item => item.IsWithin(pos));
+			if (found != null)
+			{
+				_highlightRegions.Remove(found);
+				Invalidate();
+			}
+		}
+
+		/// <summary>
+		/// Remove highlighted region by the caret position
+		/// </summary>
+		public void Unhighlight()
+		{
+			Unhighlight(_bytePos);
+		}
+
+		/// <summary>
+		/// Highlights selected bytes
+		/// </summary>
+		public void HighlightSelected()
+		{
+			if (SelectionLength > 0)
+			{
+				Highlight(SelectionStart, SelectionLength);
+			}
+		}
+		#endregion
+
 		#region Paint methods
 		/// <summary>
 		/// Paints the background.
@@ -2526,9 +2708,15 @@ namespace Be.Windows.Forms
 
 				bool isSelectedByte = i >= _bytePos && i <= (_bytePos + _selectionLength - 1) && _selectionLength != 0;
 
+				HighlightRegion hl = _highlightRegions.Find(item => item.IsWithin(i));
+
 				if (isSelectedByte && isKeyInterpreterActive)
 				{
 					PaintHexStringSelected(g, b, selBrush, selBrushBack, gridPoint);
+				}
+				else if (null != hl)
+				{
+					PaintHexStringSelected(g, b, new SolidBrush(hl.ForeColor), new SolidBrush(hl.BackColor), gridPoint);
 				}
 				else
 				{
@@ -2541,6 +2729,11 @@ namespace Be.Windows.Forms
 				{
 					g.FillRectangle(selBrushBack, byteStringPointF.X, byteStringPointF.Y, _charSize.Width, _charSize.Height);
 					g.DrawString(s, Font, selBrush, byteStringPointF, _stringFormat);
+				}
+				else if (null != hl)
+				{
+					g.FillRectangle(new SolidBrush(hl.BackColor), byteStringPointF.X, byteStringPointF.Y, _charSize.Width, _charSize.Height);
+					g.DrawString(s, Font, new SolidBrush(hl.ForeColor), byteStringPointF, _stringFormat);
 				}
 				else
 				{
@@ -2580,7 +2773,7 @@ namespace Be.Windows.Forms
 						int multiLine = endSelGridPoint.Y - startSelGridPoint.Y;
 						if (multiLine == 0)
 						{
-							
+
 							Rectangle singleLine = new Rectangle(
 								(int)startSelPointF.X,
 								(int)startSelPointF.Y,
@@ -2751,14 +2944,14 @@ namespace Be.Windows.Forms
 		void UpdateRectanglePositioning()
 		{
 			// calc char size
-            SizeF charSize;
-            using (var graphics = this.CreateGraphics())
-            {
-                charSize = this.CreateGraphics().MeasureString("A", Font, 100, _stringFormat);
-            }
+			SizeF charSize;
+			using (var graphics = this.CreateGraphics())
+			{
+				charSize = this.CreateGraphics().MeasureString("A", Font, 100, _stringFormat);
+			}
 			CharSize = new SizeF((float)Math.Ceiling(charSize.Width), (float)Math.Ceiling(charSize.Height));
 
-            int requiredWidth = 0;
+			int requiredWidth = 0;
 
 			// calc content bounds
 			_recContent = ClientRectangle;
@@ -2773,7 +2966,7 @@ namespace Be.Windows.Forms
 				_vScrollBar.Left = _recContent.X + _recContent.Width;
 				_vScrollBar.Top = _recContent.Y;
 				_vScrollBar.Height = _recContent.Height;
-                requiredWidth += _vScrollBar.Width;
+				requiredWidth += _vScrollBar.Width;
 			}
 
 			int marginLeft = 4;
@@ -2785,13 +2978,13 @@ namespace Be.Windows.Forms
 					_recContent.Y,
 					(int)(_charSize.Width * 10),
 					_recContent.Height);
-                requiredWidth += _recLineInfo.Width;
+				requiredWidth += _recLineInfo.Width;
 			}
 			else
 			{
 				_recLineInfo = Rectangle.Empty;
 				_recLineInfo.X = marginLeft;
-                requiredWidth += marginLeft;
+				requiredWidth += marginLeft;
 			}
 
 			// calc line info bounds
@@ -2816,7 +3009,7 @@ namespace Be.Windows.Forms
 			{
 				SetHorizontalByteCount(_bytesPerLine);
 				_recHex.Width = (int)Math.Floor(((double)_iHexMaxHBytes) * _charSize.Width * 3 + (2 * _charSize.Width));
-                requiredWidth += _recHex.Width;
+				requiredWidth += _recHex.Width;
 			}
 			else
 			{
@@ -2837,7 +3030,7 @@ namespace Be.Windows.Forms
 						SetHorizontalByteCount(1);
 				}
 				_recHex.Width = (int)Math.Floor(((double)_iHexMaxHBytes) * _charSize.Width * 3 + (2 * _charSize.Width));
-                requiredWidth += _recHex.Width;
+				requiredWidth += _recHex.Width;
 			}
 
 			if (_stringViewVisible)
@@ -2846,14 +3039,14 @@ namespace Be.Windows.Forms
 					_recHex.Y,
 					(int)(_charSize.Width * _iHexMaxHBytes),
 					_recHex.Height);
-                requiredWidth += _recStringView.Width;
+				requiredWidth += _recStringView.Width;
 			}
 			else
 			{
 				_recStringView = Rectangle.Empty;
 			}
 
-            RequiredWidth = requiredWidth;
+			RequiredWidth = requiredWidth;
 
 			int vmax = (int)Math.Floor((double)_recHex.Height / (double)_charSize.Height);
 			SetVerticalByteCount(vmax);
@@ -2932,12 +3125,12 @@ namespace Be.Windows.Forms
 			}
 			set
 			{
-                if (value == null)
-                    return;
-                
+				if (value == null)
+					return;
+
 				base.Font = value;
-                this.UpdateRectanglePositioning();
-                this.Invalidate();
+				this.UpdateRectanglePositioning();
+				this.Invalidate();
 			}
 		}
 
@@ -3150,6 +3343,8 @@ namespace Be.Windows.Forms
 					else
 						CreateCaret();
 				}
+
+				_highlightRegions.Clear();
 
 				CheckCurrentLineChanged();
 				CheckCurrentPositionInLineChanged();
@@ -3389,6 +3584,28 @@ namespace Be.Windows.Forms
 		} Color _selectionForeColor = Color.White;
 
 		/// <summary>
+		/// Gets or sets the foreground color for the highlighted bytes.
+		/// </summary>
+		[DefaultValue(typeof(Color), "Black"), Category("Hex"), Description("Highlight foreground color.")]
+		public Color HighlightForeColor
+		{
+			get { return _hlForeColor; }
+			set { _hlForeColor = value; Invalidate(); }
+		}
+		Color _hlForeColor = Color.Black;
+
+		/// <summary>
+		/// Gets or sets the background color for the highlighted bytes.
+		/// </summary>
+		[DefaultValue(typeof(Color), "Yellow"), Category("Hex"), Description("Highlight background color.")]
+		public Color HighlightBackColor
+		{
+			get { return _hlBackColor; }
+			set { _hlBackColor = value; Invalidate(); }
+		}
+		Color _hlBackColor = Color.Yellow;
+
+		/// <summary>
 		/// Gets or sets the visibility of a shadow selection.
 		/// </summary>
 		[DefaultValue(true), Category("Hex"), Description("Gets or sets the visibility of a shadow selection.")]
@@ -3418,39 +3635,39 @@ namespace Be.Windows.Forms
 			set { _shadowSelectionColor = value; Invalidate(); }
 		} Color _shadowSelectionColor = Color.FromArgb(100, 60, 188, 255);
 
-        /// <summary>
-        /// Contains the size of a single character in pixel
-        /// </summary>
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public SizeF CharSize
-        {
-            get { return _charSize; }
-            private set
-            {
-                if (_charSize == value)
-                    return;
-                _charSize = value;
-                if (CharSizeChanged != null)
-                    CharSizeChanged(this, EventArgs.Empty);
-            }
-        } SizeF _charSize;
+		/// <summary>
+		/// Contains the size of a single character in pixel
+		/// </summary>
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+		public SizeF CharSize
+		{
+			get { return _charSize; }
+			private set
+			{
+				if (_charSize == value)
+					return;
+				_charSize = value;
+				if (CharSizeChanged != null)
+					CharSizeChanged(this, EventArgs.Empty);
+			}
+		} SizeF _charSize;
 
-        /// <summary>
-        /// Gets the width required for the content
-        /// </summary>
-        [DefaultValue(0), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public int RequiredWidth
-        {
-            get { return _requiredWidth; }
-            private set
-            {
-                if (_requiredWidth == value)
-                    return;
-                _requiredWidth = value;
-                if (RequiredWidthChanged != null)
-                    RequiredWidthChanged(this, EventArgs.Empty);
-            }
-        } int _requiredWidth;
+		/// <summary>
+		/// Gets the width required for the content
+		/// </summary>
+		[DefaultValue(0), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+		public int RequiredWidth
+		{
+			get { return _requiredWidth; }
+			private set
+			{
+				if (_requiredWidth == value)
+					return;
+				_requiredWidth = value;
+				if (RequiredWidthChanged != null)
+					RequiredWidthChanged(this, EventArgs.Empty);
+			}
+		} int _requiredWidth;
 
 		/// <summary>
 		/// Gets the number bytes drawn horizontally.
@@ -3543,6 +3760,17 @@ namespace Be.Windows.Forms
 			}
 		} IByteCharConverter _byteCharConverter;
 
+		/// <summary>
+		/// Gets currently selected region
+		/// </summary>
+		[Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+		public HighlightRegion SelectedRegion
+		{
+			get
+			{
+				return _selectedRegion;
+			}
+		}
 		#endregion
 
 		#region Misc
@@ -3629,6 +3857,12 @@ namespace Be.Windows.Forms
 				CheckCurrentPositionInLineChanged();
 
 				OnSelectionStartChanged(EventArgs.Empty);
+
+				_selectedRegion = _highlightRegions.Find(item => item.IsWithin(_bytePos));
+				if (null != _selectedRegion)
+				{
+					OnHighlightRegionSelected(EventArgs.Empty);
+				}
 			}
 		}
 
@@ -3973,29 +4207,49 @@ namespace Be.Windows.Forms
 		{
 			UpdateScrollSize();
 		}
+
+		/// <summary>
+		/// Raises the HighlightRegionAdded event.
+		/// </summary>
+		/// <param name="e">An EventArgs that contains the event data.</param>
+		protected virtual void OnHighlightRegionAdded(EventArgs e)
+		{
+			if (HighlightRegionAdded != null)
+				HighlightRegionAdded(this, e);
+		}
+
+		/// <summary>
+		/// Raises the HighlightRegionSelected event.
+		/// </summary>
+		/// <param name="e">An EventArgs that contains the event data.</param>
+		protected virtual void OnHighlightRegionSelected(EventArgs e)
+		{
+			if (HighlightRegionSelected != null)
+				HighlightRegionSelected(this, e);
+		}
 		#endregion
 
-        #region Scaling Support for High DPI resolution screens
-        /// <summary>
-        /// For high resolution screen support
-        /// </summary>
-        /// <param name="factor">the factor</param>
-        /// <param name="specified">bounds</param>
-        protected override void ScaleControl(SizeF factor, BoundsSpecified specified)
-        {
-            base.ScaleControl(factor, specified);
+		#region Scaling Support for High DPI resolution screens
+		/// <summary>
+		/// For high resolution screen support
+		/// </summary>
+		/// <param name="factor">the factor</param>
+		/// <param name="specified">bounds</param>
+		protected override void ScaleControl(SizeF factor, BoundsSpecified specified)
+		{
+			base.ScaleControl(factor, specified);
 
-            this.BeginInvoke(new MethodInvoker(() =>
-                {
-                    this.UpdateRectanglePositioning();
-                    if (_caretVisible)
-                    {
-                        DestroyCaret();
-                        CreateCaret();
-                    }
-                    this.Invalidate();
-                }));
-        }
-        #endregion
-    }
+			this.BeginInvoke(new MethodInvoker(() =>
+				{
+					this.UpdateRectanglePositioning();
+					if (_caretVisible)
+					{
+						DestroyCaret();
+						CreateCaret();
+					}
+					this.Invalidate();
+				}));
+		}
+		#endregion
+	}
 }
